@@ -27,9 +27,12 @@ type contentResult struct {
 // contentMerge performs the three-way content merge of the file versions
 // o (base), a (ours) and b (theirs) found at path. pathnames carries where
 // each stage's blob came from (renames rewrite it; empty means path).
+// extraMarker grows the conflict markers for rename-driven merges, whose
+// output can end up nested inside another conflict (merge-ort's
+// extra_marker_size).
 //
 // The merged blob is written to the storer when a real merge happened.
-func (m *merger) contentMerge(path string, o, a, b version, pathnames [3]string) (contentResult, error) {
+func (m *merger) contentMerge(path string, o, a, b version, pathnames [3]string, extraMarker int) (contentResult, error) {
 	// Merge modes first (handle_content_merge). a and b are both present
 	// and of the same type on entry (process_entry guarantees it).
 	var mode filemode.FileMode
@@ -52,7 +55,7 @@ func (m *merger) contentMerge(path string, o, a, b version, pathnames [3]string)
 
 	switch {
 	case isRegularFile(a.mode):
-		return m.mergeBlobs(path, o, a, b, mode, pathnames, clean)
+		return m.mergeBlobs(path, o, a, b, mode, pathnames, clean, extraMarker)
 	case a.mode == filemode.Submodule:
 		// Without the submodule repository there is no history search
 		// (merge_submodule's fast paths are already covered by the
@@ -91,7 +94,7 @@ func (e errUnsupportedMode) Error() string {
 // mergeBlobs runs the regular-file merge: binary guard, then the xdl_merge
 // port with conflict markers, writing the result blob to the storer
 // (ll_xdl_merge + ll_binary_merge + merge_3way label handling).
-func (m *merger) mergeBlobs(path string, o, a, b version, mode filemode.FileMode, pathnames [3]string, clean bool) (contentResult, error) {
+func (m *merger) mergeBlobs(path string, o, a, b version, mode filemode.FileMode, pathnames [3]string, clean bool, extraMarker int) (contentResult, error) {
 	// A base of a different type (or absent) downgrades to a two-way
 	// merge with an empty base.
 	twoWay := fileType(o.mode) != fileType(a.mode)
@@ -145,7 +148,7 @@ func (m *merger) mergeBlobs(path string, o, a, b version, mode filemode.FileMode
 		level:      xmZealous,
 		favor:      favor,
 		styleDiff3: m.opts.Style == StyleDiff3,
-		markerSize: m.markerSize(),
+		markerSize: m.markerSize() + extraMarker,
 		ancestor:   labels.ancestor,
 		file1:      labels.file1,
 		file2:      labels.file2,

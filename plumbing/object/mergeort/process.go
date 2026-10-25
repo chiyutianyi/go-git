@@ -176,17 +176,18 @@ func (m *merger) decideFile(path string, n *node) ([]fileDecision, bool, error) 
 		}
 		// Need a two-way or three-way content merge.
 		pathnames := [3]string{s0.path, s1.path, s2.path}
-		cr, err := m.contentMerge(path, *s0, *s1, *s2, pathnames)
+		cr, err := m.contentMerge(path, *s0, *s1, *s2, pathnames, 0)
 		if err != nil {
 			return nil, false, err
 		}
 		if !cr.clean {
 			reason := "content"
 			switch {
-			case !present(s0):
-				reason = "add/add"
+			// Submodule trumps add/add, like process_entry.
 			case s1.mode == filemode.Submodule:
 				reason = "submodule"
+			case !present(s0):
+				reason = "add/add"
 			}
 			m.message(path, "CONFLICT (%s): Merge conflict in %s", reason, path)
 		}

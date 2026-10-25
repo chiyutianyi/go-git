@@ -436,6 +436,9 @@ func TestMergeCommitsCrissCrossVirtualBase(t *testing.T) {
 type oracleRepo struct {
 	t   *testing.T
 	dir string
+	// oursRef/theirsRef name the merge sides for the case harness
+	// (labels and expectations follow them).
+	oursRef, theirsRef string
 }
 
 func newOracleRepo(t *testing.T) *oracleRepo {

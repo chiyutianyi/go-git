@@ -93,7 +93,9 @@ func (m *merger) processRenames(base, ours, theirs *object.Tree) error {
 
 // applyRename1to1 handles both sides renaming a source to the same target.
 func (m *merger) applyRename1to1(oldN, newN *node, p renamePair) {
-	newN.stages[0] = withPath(oldN.stages[0], p.oldPath)
+	// merge-ort does not rewrite pathnames for 1to1 renames, keeping
+	// plain branch labels in any content merge at the target.
+	newN.stages[0] = oldN.stages[0]
 	m.resolveRemoval(oldN)
 }
 
@@ -102,7 +104,7 @@ func (m *merger) applyRename1to1(oldN, newN *node, p renamePair) {
 // base stage as a conflicted entry.
 func (m *merger) applyRename1to2(oldN, newN, newN2 *node, p, q renamePair) error {
 	cr, err := m.contentMerge(p.oldPath, oldN.stages[0], newN.stages[1], newN2.stages[2],
-		[3]string{p.oldPath, p.newPath, q.newPath})
+		[3]string{p.oldPath, p.newPath, q.newPath}, 1)
 	if err != nil {
 		return err
 	}
@@ -154,7 +156,7 @@ func (m *merger) applyRename(oldN, newN *node, p renamePair) error {
 			o, a, b = oldN.stages[0], oldN.stages[1], newN.stages[2]
 			pathnames[2] = p.newPath
 		}
-		cr, err := m.contentMerge(p.oldPath, o, a, b, pathnames)
+		cr, err := m.contentMerge(p.oldPath, o, a, b, pathnames, 1)
 		if err != nil {
 			return err
 		}
